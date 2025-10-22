@@ -40,7 +40,7 @@ const steps = [
   },
 ];
 
-export const AboutSectionLidio: React.FC = () => {
+export default function Page() {
   return (
     <section
       id="about-lidio"
@@ -157,6 +157,4 @@ export const AboutSectionLidio: React.FC = () => {
       </motion.div>
     </section>
   );
-};
-
-export default AboutSectionLidio;
+}
