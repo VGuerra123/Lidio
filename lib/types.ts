@@ -1,6 +1,8 @@
+// ✅ Tipos flexibles y compatibles con Shopify API
+
 export interface ShopifyImage {
   url: string;
-  altText: string | null;
+  altText?: string | null;
 }
 
 export interface ShopifyPrice {
@@ -19,23 +21,23 @@ export interface ShopifyProduct {
   id: string;
   title: string;
   handle: string;
-  description: string;
-  descriptionHtml?: string;
+  description?: string | null; // ✅ opcional
+  descriptionHtml?: string | null;
   priceRange: {
     minVariantPrice: ShopifyPrice;
   };
-  images: {
-    edges: Array<{
+  images?: {
+    edges?: Array<{
       node: ShopifyImage;
     }>;
   };
   variants?: {
-    edges: Array<{
+    edges?: Array<{
       node: ShopifyVariant;
     }>;
   };
-  productType: string;
-  tags: string[];
+  productType?: string | null; // ✅ opcional
+  tags?: string[]; // ✅ opcional
   availableForSale: boolean;
 }
 
@@ -43,13 +45,13 @@ export interface ShopifyCollection {
   id: string;
   title: string;
   handle: string;
-  description: string;
+  description?: string | null;
   image?: {
     url: string;
-    altText: string | null;
+    altText?: string | null;
   };
   products?: {
-    edges: Array<{
+    edges?: Array<{
       node: ShopifyProduct;
     }>;
   };

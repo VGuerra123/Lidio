@@ -5,24 +5,27 @@ import { motion, AnimatePresence } from 'framer-motion';
 import ProductGrid from '@/components/ProductGrid';
 import Filters from '@/components/Filters';
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import {
-  Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetFooter,
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+  SheetFooter,
 } from '@/components/ui/sheet';
-import { X, Filter, ArrowUpDown } from 'lucide-react';
+import { Filter, ArrowUpDown } from 'lucide-react';
+import { ShopifyProduct } from '@/lib/shopify'; // ✅ Tipo oficial
 
-type Money = { amount: string };
-type ProductNode = {
-  id: string;
-  title: string;
-  productType: string;
-  availableForSale: boolean;
-  priceRange: { minVariantPrice: Money };
-};
-type Edge = { node: ProductNode };
+// Tipo base para edges
+type Edge = { node: ShopifyProduct };
 
 type FiltersState = {
   categories: string[];
@@ -41,6 +44,7 @@ export default function ProductsPage() {
   const [filters, setFilters] = useState<FiltersState>({ categories: [] });
   const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
 
+  // 🧠 Fetch de productos desde la API
   useEffect(() => {
     (async () => {
       try {
@@ -56,38 +60,59 @@ export default function ProductsPage() {
     })();
   }, []);
 
+  // 🏷️ Generar lista de categorías únicas
   const categories = useMemo(
-    () => Array.from(new Set(products.map(p => p.node.productType).filter(Boolean))).sort(),
+    () =>
+      Array.from(
+        new Set(
+          products
+            .map((p) => p.node.productType ?? '') // evitar undefined
+            .filter(Boolean)
+        )
+      ).sort(),
     [products]
   );
 
+  // 🧮 Aplicar filtros y ordenamientos
   const filteredAndSorted = useMemo(() => {
     let list = products;
 
+    // Filtrado por categorías
     if (filters.categories?.length) {
-      list = list.filter(p => filters.categories.includes(p.node.productType));
+      list = list.filter((p) =>
+        filters.categories.includes(p.node.productType ?? '')
+      );
     }
+
+    // Filtrado por rango de precios
     if (filters.priceRange) {
       const [min, max] = filters.priceRange;
-      list = list.filter(p => {
+      list = list.filter((p) => {
         const price = parseFloat(p.node.priceRange.minVariantPrice.amount);
         return price >= min && price <= max;
       });
     }
+
+    // Filtrado por stock
     if (filters.inStock) {
-      list = list.filter(p => p.node.availableForSale);
+      list = list.filter((p) => p.node.availableForSale);
     }
 
+    // Ordenamiento
     const sorted = [...list];
     switch (sortBy) {
       case 'price-asc':
-        sorted.sort((a, b) =>
-          parseFloat(a.node.priceRange.minVariantPrice.amount) - parseFloat(b.node.priceRange.minVariantPrice.amount)
+        sorted.sort(
+          (a, b) =>
+            parseFloat(a.node.priceRange.minVariantPrice.amount) -
+            parseFloat(b.node.priceRange.minVariantPrice.amount)
         );
         break;
       case 'price-desc':
-        sorted.sort((a, b) =>
-          parseFloat(b.node.priceRange.minVariantPrice.amount) - parseFloat(a.node.priceRange.minVariantPrice.amount)
+        sorted.sort(
+          (a, b) =>
+            parseFloat(b.node.priceRange.minVariantPrice.amount) -
+            parseFloat(a.node.priceRange.minVariantPrice.amount)
         );
         break;
       case 'name-asc':
@@ -97,6 +122,7 @@ export default function ProductsPage() {
         sorted.sort((a, b) => b.node.title.localeCompare(a.node.title));
         break;
     }
+
     return sorted;
   }, [products, filters, sortBy]);
 
@@ -104,6 +130,7 @@ export default function ProductsPage() {
   const handleSort = (value: string) => setSortBy(value as SortKey);
   const clearFilters = () => setFilters({ categories: [] });
 
+  // 💅 UI principal
   return (
     <div className="relative min-h-screen bg-gradient-to-b from-white via-cyan-50/40 to-blue-50/40 dark:from-slate-950 dark:via-slate-900 dark:to-slate-900">
       {/* FONDO SUTIL */}
@@ -224,8 +251,12 @@ export default function ProductsPage() {
             transition={{ duration: 0.3 }}
             className="rounded-3xl border border-white/60 bg-white/70 p-10 text-center shadow-sm backdrop-blur-xl dark:border-slate-700/60 dark:bg-slate-900/60"
           >
-            <p className="text-lg font-semibold text-gray-800 dark:text-slate-200">Sin resultados</p>
-            <p className="mt-1 text-gray-500 dark:text-slate-400">Ajusta los filtros o límpialos.</p>
+            <p className="text-lg font-semibold text-gray-800 dark:text-slate-200">
+              Sin resultados
+            </p>
+            <p className="mt-1 text-gray-500 dark:text-slate-400">
+              Ajusta los filtros o límpialos.
+            </p>
             <Button onClick={clearFilters} className="mt-4 rounded-xl">
               Limpiar filtros
             </Button>

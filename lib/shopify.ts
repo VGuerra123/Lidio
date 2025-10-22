@@ -1,10 +1,68 @@
+// ✅ Shopify API config
 const domain = process.env.NEXT_PUBLIC_SHOPIFY_STORE_DOMAIN!;
 const storefrontAccessToken = process.env.NEXT_PUBLIC_SHOPIFY_STOREFRONT_ACCESS_TOKEN!;
 
-async function ShopifyData(query: string) {
-  const URL = `https://${domain}/api/2024-01/graphql.json`;
+const API_URL = `https://${domain}/api/2024-01/graphql.json`;
 
-  const options = {
+// ======================================================
+// 🧩 TIPOS (completos y reutilizables)
+// ======================================================
+
+export type ShopifyImage = {
+  url: string;
+  altText?: string | null;
+};
+
+export type ShopifyVariant = {
+  id: string;
+  title: string;
+  priceV2: {
+    amount: string;
+    currencyCode: string;
+  };
+  availableForSale: boolean;
+};
+
+export type ShopifyProduct = {
+  id: string;
+  title: string;
+  handle: string;
+  description?: string;
+  descriptionHtml?: string;
+  productType?: string;
+  tags?: string[];
+  availableForSale: boolean;
+  priceRange: {
+    minVariantPrice: {
+      amount: string;
+      currencyCode: string;
+    };
+  };
+  images: {
+    edges: { node: ShopifyImage }[];
+  };
+  variants?: {
+    edges: { node: ShopifyVariant }[];
+  };
+};
+
+export type ShopifyCollection = {
+  id: string;
+  title: string;
+  handle: string;
+  description?: string;
+  image?: ShopifyImage;
+  products?: {
+    edges: { node: ShopifyProduct }[];
+  };
+};
+
+// ======================================================
+// ⚙️ Función genérica para ejecutar queries GraphQL
+// ======================================================
+
+async function shopifyFetch<T>(query: string): Promise<T> {
+  const options: RequestInit = {
     method: 'POST',
     headers: {
       'X-Shopify-Storefront-Access-Token': storefrontAccessToken,
@@ -12,18 +70,27 @@ async function ShopifyData(query: string) {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({ query }),
+    cache: 'no-store', // importante en SSR/ISR
   };
 
   try {
-    const response = await fetch(URL, options);
-    const data = await response.json();
-    return data;
+    const res = await fetch(API_URL, options);
+    if (!res.ok) {
+      throw new Error(`Shopify API error: ${res.statusText}`);
+    }
+    const json = await res.json();
+    return json.data;
   } catch (error) {
-    throw new Error('Error fetching Shopify data');
+    console.error('❌ Error fetching Shopify data:', error);
+    throw new Error('Error al obtener datos desde Shopify.');
   }
 }
 
-export async function getProducts() {
+// ======================================================
+// 🛍️ Obtener todos los productos
+// ======================================================
+
+export async function getProducts(): Promise<{ node: ShopifyProduct }[]> {
   const query = `
     {
       products(first: 50, sortKey: CREATED_AT, reverse: true) {
@@ -56,12 +123,15 @@ export async function getProducts() {
     }
   `;
 
-  const response = await ShopifyData(query);
-  const products = response.data.products.edges || [];
-  return products;
+  const data = await shopifyFetch<{ products: { edges: { node: ShopifyProduct }[] } }>(query);
+  return data.products.edges || [];
 }
 
-export async function getProduct(handle: string) {
+// ======================================================
+// 🔎 Obtener un producto específico
+// ======================================================
+
+export async function getProduct(handle: string): Promise<ShopifyProduct> {
   const query = `
     {
       product(handle: "${handle}") {
@@ -104,11 +174,15 @@ export async function getProduct(handle: string) {
     }
   `;
 
-  const response = await ShopifyData(query);
-  return response.data.product;
+  const data = await shopifyFetch<{ product: ShopifyProduct }>(query);
+  return data.product;
 }
 
-export async function getCollections() {
+// ======================================================
+// 🧭 Obtener colecciones
+// ======================================================
+
+export async function getCollections(): Promise<{ node: ShopifyCollection }[]> {
   const query = `
     {
       collections(first: 10) {
@@ -128,11 +202,15 @@ export async function getCollections() {
     }
   `;
 
-  const response = await ShopifyData(query);
-  return response.data.collections.edges || [];
+  const data = await shopifyFetch<{ collections: { edges: { node: ShopifyCollection }[] } }>(query);
+  return data.collections.edges || [];
 }
 
-export async function getCollection(handle: string) {
+// ======================================================
+// 📦 Obtener una colección específica
+// ======================================================
+
+export async function getCollection(handle: string): Promise<ShopifyCollection> {
   const query = `
     {
       collection(handle: "${handle}") {
@@ -171,9 +249,13 @@ export async function getCollection(handle: string) {
     }
   `;
 
-  const response = await ShopifyData(query);
-  return response.data.collection;
+  const data = await shopifyFetch<{ collection: ShopifyCollection }>(query);
+  return data.collection;
 }
+
+// ======================================================
+// 💳 Crear checkout (carrito)
+// ======================================================
 
 export async function createCheckout(variantId: string, quantity: number) {
   const query = `
@@ -197,6 +279,6 @@ export async function createCheckout(variantId: string, quantity: number) {
     }
   `;
 
-  const response = await ShopifyData(query);
-  return response.data.checkoutCreate.checkout;
+  const data = await shopifyFetch<{ checkoutCreate: { checkout: any } }>(query);
+  return data.checkoutCreate.checkout;
 }
